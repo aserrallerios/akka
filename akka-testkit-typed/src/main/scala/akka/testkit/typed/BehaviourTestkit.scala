@@ -7,14 +7,14 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 import akka.actor.typed.{ ActorRef, Behavior, PostStop, Props, Signal }
 import akka.annotation.{ ApiMayChange, InternalApi }
-
 import scala.annotation.tailrec
 import scala.collection.immutable
 import scala.util.control.Exception.Catcher
 import scala.util.control.NonFatal
 import scala.concurrent.duration.{ Duration, FiniteDuration }
-
 import scala.language.existentials
+
+import akka.actor.typed.internal.ControlledExecutor
 
 /**
  * All tracked effects must extend implement this type. It is deliberately
@@ -191,6 +191,10 @@ class BehaviorTestkit[T] private (_name: String, _initialBehavior: Behavior[T]) 
   def run(msg: T): Unit = {
     try {
       current = Behavior.canonicalize(Behavior.interpretMessage(current, ctx, msg), current, ctx)
+      ctx.executionContext match {
+        case controlled: ControlledExecutor ⇒ controlled.runAll()
+        case _                              ⇒
+      }
     } catch handleException
   }
 
