@@ -6,14 +6,11 @@ package akka.actor.typed.internal
 import java.util.function.Consumer
 import java.util.function.{ Function ⇒ JFunction }
 
-import scala.annotation.tailrec
-
-import akka.actor.typed.scaladsl
-import akka.actor.typed.javadsl
-import akka.annotation.InternalApi
-import akka.actor.typed.Behavior
 import akka.actor.typed.ActorContext
-import akka.actor.typed.Signal
+import akka.actor.typed.Behavior
+import akka.actor.typed.javadsl
+import akka.actor.typed.scaladsl
+import akka.annotation.InternalApi
 import akka.util.ConstantFun
 
 /**
@@ -32,16 +29,16 @@ import akka.util.ConstantFun
  * INTERNAL API
  */
 @InternalApi private[akka] final class StashBufferImpl[T] private (
-  val capacity:      Int,
-  private var _head: StashBufferImpl.Node[T],
-  private var _tail: StashBufferImpl.Node[T])
+  val capacity:       Int,
+  private var _first: StashBufferImpl.Node[T],
+  private var _last:  StashBufferImpl.Node[T])
   extends javadsl.StashBuffer[T] with scaladsl.StashBuffer[T] {
 
   import StashBufferImpl.Node
 
-  private var _size: Int = if (_head eq null) 0 else 1
+  private var _size: Int = if (_first eq null) 0 else 1
 
-  override def isEmpty: Boolean = _head eq null
+  override def isEmpty: Boolean = _first eq null
 
   override def nonEmpty: Boolean = !isEmpty
 
@@ -57,11 +54,11 @@ import akka.util.ConstantFun
 
     val node = new Node(null, message)
     if (isEmpty) {
-      _head = node
-      _tail = node
+      _first = node
+      _last = node
     } else {
-      _tail.next = node
-      _tail = node
+      _last.next = node
+      _last = node
     }
     _size += 1
     this
@@ -69,20 +66,20 @@ import akka.util.ConstantFun
 
   private def dropHead(): T = {
     val message = head
-    _head = _head.next
+    _first = _first.next
     _size -= 1
     if (isEmpty)
-      _tail = null
+      _last = null
 
     message
   }
 
   override def head: T =
-    if (nonEmpty) _head.message
+    if (nonEmpty) _first.message
     else throw new NoSuchElementException("head of empty buffer")
 
   override def foreach(f: T ⇒ Unit): Unit = {
-    var node = _head
+    var node = _first
     while (node ne null) {
       node(f)
       node = node.next
