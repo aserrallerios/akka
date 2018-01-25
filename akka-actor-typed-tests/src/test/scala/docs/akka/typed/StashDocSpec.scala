@@ -27,7 +27,7 @@ object StashDocSpec {
 
   object DataAccess {
     trait Command
-    final case class Save(payload: String, replyTo: ActorRef[Done]) extends Command
+    final case class Save(value: String, replyTo: ActorRef[Done]) extends Command
     final case class Get(replyTo: ActorRef[String]) extends Command
     private final case class InitialState(value: String) extends Command
     private final case object SaveSuccess extends Command
@@ -87,7 +87,8 @@ object StashDocSpec {
         db.load(id).onComplete {
           case Success(value) ⇒
             ctx.self ! InitialState(value)
-          case Failure(cause) ⇒ ctx.self ! DBError(cause)
+          case Failure(cause) ⇒
+            ctx.self ! DBError(cause)
         }
 
         init()

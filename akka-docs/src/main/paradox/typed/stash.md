@@ -15,9 +15,14 @@ When a new state is saved in the database it's also stashing incoming messages t
 processing completely sequential, one after the other without multiple pending writes.
 
 Scala
-:  @@snip [InteractionPatternsSpec.scala]($akka$/akka-actor-typed-tests/src/test/scala/docs/akka/typed/StashDocSpec.scala) { #stashing }
+:  @@snip [StashDocSpec.scala]($akka$/akka-actor-typed-tests/src/test/scala/docs/akka/typed/StashDocSpec.scala) { #stashing }
 
-FIXME Java example
+Java
+:  @@snip [StashDocTest.java]($akka$/akka-actor-typed-tests/src/test/java/jdocs/akka/typed/StashDocTest.java) {
+  #import
+  #db
+  #stashing
+}
 
 One important thing to be aware of is that the `StashBuffer` is a buffer and stashed messages will be
 kept in memory until they are unstashed (or the actor is stopped and garbage collected). It's recommended
