@@ -3,7 +3,9 @@
  */
 package akka.actor.typed.scaladsl
 
+import akka.actor.typed.Behavior
 import akka.testkit.typed.EffectfulActorContext
+import akka.testkit.typed.TestInbox
 import org.scalatest.Matchers
 import org.scalatest.WordSpec
 
@@ -72,6 +74,86 @@ class StashBufferSpec extends WordSpec with Matchers {
       val sb2 = new StringBuilder()
       buffer.foreach(sb2.append(_))
       sb2.toString() should ===("m2m3")
+    }
+
+    "unstash to returned behaviors" in {
+      val buffer = StashBuffer[String](10)
+      buffer.stash("m1")
+      buffer.stash("m2")
+      buffer.stash("m3")
+      buffer.stash("get")
+
+      val valueInbox = TestInbox[String]()
+      def behavior(state: String): Behavior[String] =
+        Behaviors.immutable[String] { (_, msg) ⇒
+          if (msg == "get") {
+            valueInbox.ref ! state
+            Behaviors.same
+          } else {
+            behavior(state + msg)
+          }
+        }
+
+      buffer.unstashAll(ctx, behavior(""))
+      valueInbox.expectMsg("m1m2m3")
+      buffer.isEmpty should ===(true)
+    }
+
+    "undefer returned behaviors when unstashing" in {
+      val buffer = StashBuffer[String](10)
+      buffer.stash("m1")
+      buffer.stash("m2")
+      buffer.stash("m3")
+      buffer.stash("get")
+
+      val valueInbox = TestInbox[String]()
+      def behavior(state: String): Behavior[String] =
+        Behaviors.immutable[String] { (_, msg) ⇒
+          if (msg == "get") {
+            valueInbox.ref ! state
+            Behaviors.same
+          } else {
+            Behaviors.deferred[String](_ ⇒ behavior(state + msg))
+          }
+        }
+
+      buffer.unstashAll(ctx, behavior(""))
+      valueInbox.expectMsg("m1m2m3")
+      buffer.isEmpty should ===(true)
+    }
+
+    "be able to stash while unstashing" in {
+      val buffer = StashBuffer[String](10)
+      buffer.stash("m1")
+      buffer.stash("m2")
+      buffer.stash("m3")
+      buffer.stash("get")
+
+      val valueInbox = TestInbox[String]()
+      def behavior(state: String): Behavior[String] =
+        Behaviors.immutable[String] { (_, msg) ⇒
+          if (msg == "get") {
+            valueInbox.ref ! state
+            Behaviors.same
+          } else if (msg == "m2") {
+            buffer.stash("m2")
+            Behaviors.same
+          } else {
+            behavior(state + msg)
+          }
+        }
+
+      // It's only supposed to unstash the messages that are in the buffer when
+      // the call is made, not unstash new messages added to the buffer while
+      // unstashing.
+      val b2 = buffer.unstashAll(ctx, behavior(""))
+      valueInbox.expectMsg("m1m3")
+      buffer.size should ===(1)
+      buffer.head should ===("m2")
+
+      val b3 = buffer.unstashAll(ctx, b2)
+      buffer.size should ===(1)
+      buffer.head should ===("m2")
     }
 
   }

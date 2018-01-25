@@ -87,19 +87,37 @@ object StashBuffer {
   /**
    * Process all stashed messages with the `behavior` and the returned
    * [[Behavior]] from each processed message. The `StashBuffer` will be
-   * empty after processing all messages, unless an exception is thrown.
+   * empty after processing all messages, unless an exception is thrown
+   * or messages are stashed while unstashing.
+   *
    * If an exception is thrown by processing a message a proceeding messages
    * and the message causing the exception have been removed from the
    * `StashBuffer`, but unprocessed messages remain.
+   *
+   * It's allowed to stash messages while unstashing. Those newly added
+   * messages will not be processed by this call and have to be unstashed
+   * in another call.
    */
   def unstashAll(ctx: ActorContext[T], behavior: Behavior[T]): Behavior[T]
 
   /**
    * Process `numberOfMessages` of the stashed messages with the `behavior`
    * and the returned [[Behavior]] from each processed message.
+   *
+   * The purpose of this method, compared to `unstashAll`, is to unstash a limited
+   * number of messages and then send a message to `self` before continuing unstashing
+   * more. That means that other new messages may arrive in-between and those must
+   * be stashed to keep the original order of messages. To differentiate between
+   * unstashed and new incoming messages the unstashed messages can be wrapped
+   * in another message with the `wrap`.
+   *
    * If an exception is thrown by processing a message a proceeding messages
    * and the message causing the exception have been removed from the
    * `StashBuffer`, but unprocessed messages remain.
+   *
+   * It's allowed to stash messages while unstashing. Those newly added
+   * messages will not be processed by this call and have to be unstashed
+   * in another call.
    */
   def unstash(ctx: ActorContext[T], behavior: Behavior[T], numberOfMessages: Int, wrap: JFunction[T, T]): Behavior[T]
 

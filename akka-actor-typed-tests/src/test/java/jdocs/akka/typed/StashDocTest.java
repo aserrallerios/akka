@@ -30,7 +30,7 @@ public class StashDocTest extends JUnitSuite {
   //#db
 
   //#stashing
-  
+
   public static class DataAccess {
 
     static interface Command {
